@@ -1,0 +1,608 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>أوراد القرآن الكريم</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              deen: {
+                dark: "#0b3d2e",
+                green: "#145a3c",
+                light: "#1e7a52",
+                gold: "#f4c430",
+                cream: "#fdf6e3",
+              },
+            },
+            fontFamily: {
+              arabic: ["'Amiri'", "'Cairo'", "serif"],
+            },
+          },
+        },
+      };
+    </script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+    <!-- Babel (لترجمة JSX في المتصفح) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+      body {
+        font-family: "Cairo", sans-serif;
+        background: radial-gradient(circle at top, #145a3c 0%, #0b3d2e 100%);
+        color: #fdf6e3;
+        min-height: 100vh;
+      }
+      .stars-bg::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background-image:
+          radial-gradient(2px 2px at 20% 30%, #f4c430 40%, transparent 50%),
+          radial-gradient(1px 1px at 70% 80%, #f4c430 40%, transparent 50%),
+          radial-gradient(1.5px 1.5px at 40% 60%, #fff8dc 40%, transparent 50%),
+          radial-gradient(1px 1px at 85% 20%, #f4c430 40%, transparent 50%),
+          radial-gradient(1px 1px at 10% 75%, #fff8dc 40%, transparent 50%);
+        opacity: 0.4;
+        pointer-events: none;
+        z-index: 0;
+      }
+      .card-gold {
+        border: 1px solid rgba(244, 196, 48, 0.4);
+        box-shadow: 0 4px 20px rgba(244, 196, 48, 0.08);
+      }
+      .btn-gold {
+        background: linear-gradient(135deg, #f4c430, #d4a017);
+        color: #0b3d2e;
+        font-weight: 700;
+        transition: all 0.25s;
+      }
+      .btn-gold:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(244, 196, 48, 0.4);
+      }
+      .juz-card {
+        transition: all 0.25s ease;
+        cursor: pointer;
+      }
+      .juz-card:hover:not(.reserved) {
+        transform: translateY(-4px) scale(1.02);
+        box-shadow: 0 8px 30px rgba(244, 196, 48, 0.35);
+      }
+      .juz-card.reserved {
+        background: rgba(60, 60, 60, 0.5);
+        cursor: not-allowed;
+        opacity: 0.6;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <!-- Firebase SDK v10 (Modular via ESM CDN) -->
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+      import {
+        getAuth,
+        GoogleAuthProvider,
+        signInWithPopup,
+        signOut,
+        onAuthStateChanged,
+      } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+      import {
+        getFirestore,
+        collection,
+        doc,
+        setDoc,
+        getDocs,
+        query,
+        where,
+        serverTimestamp,
+        deleteDoc,
+      } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+      // 🔑 استبدل هذه القيم بمفاتيح مشروعك من Firebase Console
+      const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_PROJECT.firebaseapp.com",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_PROJECT.appspot.com",
+        messagingSenderId: "YOUR_SENDER_ID",
+        appId: "YOUR_APP_ID",
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+      const googleProvider = new GoogleAuthProvider();
+
+      // اجعلها متاحة globally لاستخدامها في كود Babel
+      window.FB = {
+        auth,
+        db,
+        googleProvider,
+        signInWithPopup,
+        signOut,
+        onAuthStateChanged,
+        collection,
+        doc,
+        setDoc,
+        getDocs,
+        query,
+        where,
+        serverTimestamp,
+        deleteDoc,
+      };
+
+      window.dispatchEvent(new Event("firebase-ready"));
+    </script>
+
+    <!-- React App -->
+    <script type="text/babel" data-presets="react">
+      const { useState, useEffect } = React;
+
+      // ==== بيانات الأجزاء ====
+      const juzData = [
+        { number: 1, name: "الجزء الأول", start: "الفاتحة 1", end: "البقرة 141" },
+        { number: 2, name: "الجزء الثاني", start: "البقرة 142", end: "البقرة 252" },
+        { number: 3, name: "الجزء الثالث", start: "البقرة 253", end: "آل عمران 92" },
+        { number: 4, name: "الجزء الرابع", start: "آل عمران 93", end: "النساء 23" },
+        { number: 5, name: "الجزء الخامس", start: "النساء 24", end: "النساء 147" },
+        { number: 6, name: "الجزء السادس", start: "النساء 148", end: "المائدة 81" },
+        { number: 7, name: "الجزء السابع", start: "المائدة 82", end: "الأنعام 110" },
+        { number: 8, name: "الجزء الثامن", start: "الأنعام 111", end: "الأعراف 87" },
+        { number: 9, name: "الجزء التاسع", start: "الأعراف 88", end: "الأنفال 40" },
+        { number: 10, name: "الجزء العاشر", start: "الأنفال 41", end: "التوبة 92" },
+        { number: 11, name: "الجزء الحادي عشر", start: "التوبة 93", end: "هود 5" },
+        { number: 12, name: "الجزء الثاني عشر", start: "هود 6", end: "يوسف 52" },
+        { number: 13, name: "الجزء الثالث عشر", start: "يوسف 53", end: "إبراهيم 52" },
+        { number: 14, name: "الجزء الرابع عشر", start: "الحجر 1", end: "النحل 128" },
+        { number: 15, name: "الجزء الخامس عشر", start: "الإسراء 1", end: "الكهف 74" },
+        { number: 16, name: "الجزء السادس عشر", start: "الكهف 75", end: "طه 135" },
+        { number: 17, name: "الجزء السابع عشر", start: "الأنبياء 1", end: "الحج 78" },
+        { number: 18, name: "الجزء الثامن عشر", start: "المؤمنون 1", end: "الفرقان 20" },
+        { number: 19, name: "الجزء التاسع عشر", start: "الفرقان 21", end: "النمل 55" },
+        { number: 20, name: "الجزء العشرون", start: "النمل 56", end: "العنكبوت 45" },
+        { number: 21, name: "الجزء الحادي والعشرون", start: "العنكبوت 46", end: "الأحزاب 30" },
+        { number: 22, name: "الجزء الثاني والعشرون", start: "الأحزاب 31", end: "يس 27" },
+        { number: 23, name: "الجزء الثالث والعشرون", start: "يس 28", end: "الزمر 31" },
+        { number: 24, name: "الجزء الرابع والعشرون", start: "الزمر 32", end: "فصلت 46" },
+        { number: 25, name: "الجزء الخامس والعشرون", start: "فصلت 47", end: "الجاثية 37" },
+        { number: 26, name: "الجزء السادس والعشرون", start: "الأحقاف 1", end: "الذاريات 30" },
+        { number: 27, name: "الجزء السابع والعشرون", start: "الذاريات 31", end: "الحديد 29" },
+        { number: 28, name: "الجزء الثامن والعشرون", start: "المجادلة 1", end: "التحريم 12" },
+        { number: 29, name: "الجزء التاسع والعشرون", start: "الملك 1", end: "المرسلات 50" },
+        { number: 30, name: "الجزء الثلاثون", start: "النبأ 1", end: "الناس 6" },
+      ];
+
+      // ==== الأدعية ====
+      const duas = [
+        {
+          title: "دعاء ختم القرآن",
+          text: "اللَّهُمَّ ارْحَمْنِي بِالْقُرْآنِ، وَاجْعَلْهُ لِي إِمَامًا وَنُورًا وَهُدًى وَرَحْمَةً، اللَّهُمَّ ذَكِّرْنِي مِنْهُ مَا نَسِيتُ، وَعَلِّمْنِي مِنْهُ مَا جَهِلْتُ، وَارْزُقْنِي تِلَاوَتَهُ آنَاءَ اللَّيْلِ وَأَطْرَافَ النَّهَارِ.",
+        },
+        {
+          title: "دعاء قبل التلاوة",
+          text: "اللَّهُمَّ إِنِّي أَسْأَلُكَ بِرَحْمَتِكَ الَّتِي وَسِعَتْ كُلَّ شَيْءٍ أَنْ تَرْحَمَنِي، وَأَنْ تُنَزِّلَ عَلَيَّ مِنْ رَحْمَتِكَ مَا تُطَهِّرُ بِهِ قَلْبِي وَتُصْلِحُ بِهِ سِرِّي.",
+        },
+        {
+          title: "دعاء لختم القرآن في رمضان",
+          text: "اللَّهُمَّ تَقَبَّلْ مِنَّا صِيَامَنَا وَقِيَامَنَا وَتِلَاوَتَنَا لِلْقُرْآنِ، وَاجْعَلْنَا مِنْ عُتَقَائِكَ مِنَ النَّارِ.",
+        },
+        {
+          title: "دعاء حفظ القرآن",
+          text: "اللَّهُمَّ اجْعَلِ الْقُرْآنَ رَبِيعَ قَلْبِي، وَنُورَ صَدْرِي، وَجَلَاءَ حُزْنِي، وَذَهَابَ هَمِّي.",
+        },
+        {
+          title: "دعاء البركة في الوقت",
+          text: "اللَّهُمَّ بَارِكْ لِي فِي وَقْتِي، وَأَعِنِّي عَلَى ذِكْرِكَ وَشُكْرِكَ وَحُسْنِ عِبَادَتِكَ.",
+        },
+      ];
+
+      // ==== مكوّن تسجيل الدخول ====
+      function Login({ onLogin }) {
+        return (
+          <div className="stars-bg min-h-screen flex items-center justify-center px-4">
+            <div className="card-gold bg-deen-dark/80 backdrop-blur-md rounded-3xl p-10 max-w-md w-full text-center relative z-10">
+              <div className="text-6xl mb-4">🌙</div>
+              <h1 className="text-3xl font-bold text-deen-gold mb-2 font-arabic">
+                أوراد القرآن الكريم
+              </h1>
+              <p className="text-deen-cream/80 mb-8">
+                احجز وردك اليومي وشارك ختم القرآن مع إخوانك
+              </p>
+              <button
+                onClick={onLogin}
+                className="btn-gold w-full py-3 rounded-xl flex items-center justify-center gap-3 text-lg"
+              >
+                <span className="text-2xl">🔐</span>
+                تسجيل الدخول عبر Google
+              </button>
+              <p className="text-xs text-deen-cream/60 mt-6">
+                بتسجيلك، أنت توافق على أن تُقرأ أورادك باسمك فقط
+              </p>
+            </div>
+          </div>
+        );
+      }
+
+      // ==== الهيدر ====
+      function Header({ user, onLogout }) {
+        return (
+          <header className="flex items-center justify-between flex-wrap gap-3 py-4 border-b border-deen-gold/30">
+            <div className="flex items-center gap-3">
+              <span className="text-3xl">🕌</span>
+              <div>
+                <h1 className="text-xl font-bold text-deen-gold font-arabic">
+                  أوراد القرآن
+                </h1>
+                <p className="text-xs text-deen-cream/70">
+                  {new Date().toLocaleDateString("ar-EG", {
+                    weekday: "long",
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <img
+                src={user.photoURL}
+                alt="avatar"
+                className="w-10 h-10 rounded-full border-2 border-deen-gold"
+              />
+              <div className="text-right">
+                <p className="text-sm font-semibold">{user.displayName}</p>
+                <p className="text-xs text-deen-cream/60">{user.email}</p>
+              </div>
+              <button
+                onClick={onLogout}
+                className="px-3 py-1 text-sm rounded-lg border border-deen-gold/50 hover:bg-deen-gold hover:text-deen-dark transition"
+              >
+                خروج
+              </button>
+            </div>
+          </header>
+        );
+      }
+
+      // ==== الساعة المباشرة ====
+      function LiveClock() {
+        const [now, setNow] = useState(new Date());
+        useEffect(() => {
+          const id = setInterval(() => setNow(new Date()), 1000);
+          return () => clearInterval(id);
+        }, []);
+        return (
+          <div className="card-gold bg-deen-dark/70 backdrop-blur rounded-2xl p-5 flex items-center gap-4">
+            <span className="text-3xl text-deen-gold">🕒</span>
+            <div>
+              <p className="text-xs text-deen-cream/60">الوقت الحالي</p>
+              <p className="text-2xl font-bold text-deen-gold tabular-nums">
+                {now.toLocaleTimeString("ar-EG", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  second: "2-digit",
+                })}
+              </p>
+              <p className="text-xs text-deen-cream/70">
+                {now.toLocaleDateString("ar-EG", {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                })}
+              </p>
+            </div>
+          </div>
+        );
+      }
+
+      // ==== الموقع ====
+      function LocationCard({ onLocationChange }) {
+        const [location, setLocation] = useState("جاري تحديد الموقع...");
+        const [manual, setManual] = useState("");
+
+        const updateLocation = (val) => {
+          setLocation(val);
+          if (onLocationChange) onLocationChange(val);
+        };
+
+        useEffect(() => {
+          if (!navigator.geolocation) {
+            updateLocation("الموقع غير مدعوم");
+            return;
+          }
+          navigator.geolocation.getCurrentPosition(
+            async (pos) => {
+              const { latitude, longitude } = pos.coords;
+              try {
+                const res = await fetch(
+                  `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=ar`
+                );
+                const data = await res.json();
+                const city =
+                  data.address?.state ||
+                  data.address?.city ||
+                  data.address?.country ||
+                  "غير معروف";
+                const country = data.address?.country || "";
+                updateLocation(`${city}${country ? " - " + country : ""}`);
+              } catch {
+                updateLocation(`${latitude.toFixed(2)}, ${longitude.toFixed(2)}`);
+              }
+            },
+            () => updateLocation("تم رفض الوصول للموقع")
+          );
+        }, []);
+
+        return (
+          <div className="card-gold bg-deen-dark/70 backdrop-blur rounded-2xl p-5">
+            <div className="flex items-center gap-3 mb-2">
+              <span className="text-2xl text-deen-gold">📍</span>
+              <p className="text-sm text-deen-cream/70">موقعك الحالي</p>
+            </div>
+            <p className="text-lg font-bold text-deen-gold mb-3">{location}</p>
+            <input
+              type="text"
+              placeholder="أو أدخل مدينتك يدوياً (مثلاً: الجلفة)"
+              value={manual}
+              onChange={(e) => setManual(e.target.value)}
+              onBlur={() => manual && updateLocation(manual)}
+              className="w-full px-3 py-2 rounded-lg bg-deen-green/40 border border-deen-gold/30 text-deen-cream placeholder:text-deen-cream/40 focus:outline-none focus:border-deen-gold"
+            />
+          </div>
+        );
+      }
+
+      // ==== شبكة الأجزاء ====
+      function JuzGrid({
+        reservations,
+        currentUserId,
+        userCity,
+        onReserve,
+        onCancel,
+      }) {
+        const handleClick = (juz) => {
+          const res = reservations[juz.number];
+          if (res) {
+            if (res.userId === currentUserId) {
+              if (
+                confirm(
+                  `أنت حجزت هذا الجزء (${res.city}). هل تريد إلغاء الحجز؟`
+                )
+              ) {
+                onCancel(juz.number);
+              }
+            } else {
+              alert(
+                `هذا الورد محجوز من قبل: ${res.userName}\nالمدينة: ${res.city}\nاختر ورداً آخر.`
+              );
+            }
+          } else {
+            if (confirm(`هل تريد حجز ${juz.name}؟`)) {
+              onReserve(juz.number, userCity || "غير محدد");
+            }
+          }
+        };
+
+        return (
+          <section className="my-8">
+            <h2 className="text-2xl font-bold text-deen-gold mb-4 font-arabic">
+              📖 الأوراد (30 جزءاً)
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+              {juzData.map((juz) => {
+                const res = reservations[juz.number];
+                const mine = res && res.userId === currentUserId;
+                return (
+                  <div
+                    key={juz.number}
+                    onClick={() => handleClick(juz)}
+                    className={`juz-card card-gold rounded-xl p-3 text-center ${
+                      res ? "reserved" : "bg-deen-green/60"
+                    } ${mine ? "!bg-deen-gold/20 !border-deen-gold" : ""}`}
+                  >
+                    <p className="text-2xl mb-1">{res ? "🔒" : "📗"}</p>
+                    <p className="text-sm font-bold text-deen-gold">
+                      {juz.name}
+                    </p>
+                    <p className="text-[10px] text-deen-cream/60 mt-1">
+                      {juz.start} → {juz.end}
+                    </p>
+                    {res ? (
+                      <p className="text-[10px] mt-2 text-red-300 truncate">
+                        {mine ? "حجزك ✓" : `محجوز: ${res.userName}`}
+                      </p>
+                    ) : (
+                      <p className="text-[10px] mt-2 text-green-300">
+                        متاح ✓
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        );
+      }
+
+      // ==== الأدعية ====
+      function DuasSection() {
+        return (
+          <section className="my-10">
+            <h2 className="text-2xl font-bold text-deen-gold mb-4 font-arabic">
+              🤲 أدعية مختارة
+            </h2>
+            <div className="grid md:grid-cols-2 gap-4">
+              {duas.map((d, i) => (
+                <div
+                  key={i}
+                  className="card-gold bg-deen-dark/60 backdrop-blur rounded-2xl p-5"
+                >
+                  <h3 className="text-deen-gold font-bold mb-2 font-arabic">
+                    {d.title}
+                  </h3>
+                  <p className="text-deen-cream/90 leading-loose text-sm font-arabic">
+                    {d.text}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+        );
+      }
+
+      // ==== التطبيق الرئيسي ====
+      function App() {
+        const [user, setUser] = useState(null);
+        const [loading, setLoading] = useState(true);
+        const [reservations, setReservations] = useState({});
+        const [userCity, setUserCity] = useState("غير محدد");
+        const [fbReady, setFbReady] = useState(false);
+
+        const todayKey = new Date().toISOString().split("T")[0];
+
+        useEffect(() => {
+          if (window.FB) setFbReady(true);
+          else {
+            const handler = () => setFbReady(true);
+            window.addEventListener("firebase-ready", handler);
+            return () => window.removeEventListener("firebase-ready", handler);
+          }
+        }, []);
+
+        useEffect(() => {
+          if (!fbReady) return;
+          const { auth, onAuthStateChanged } = window.FB;
+          const unsub = onAuthStateChanged(auth, (u) => {
+            setUser(u);
+            setLoading(false);
+          });
+          return () => unsub();
+        }, [fbReady]);
+
+        const loadReservations = async () => {
+          const { db, collection, getDocs, query, where } = window.FB;
+          const q = query(
+            collection(db, "reservations"),
+            where("date", "==", todayKey)
+          );
+          const snap = await getDocs(q);
+          const map = {};
+          snap.forEach((d) => {
+            const data = d.data();
+            map[data.juzNumber] = data;
+          });
+          setReservations(map);
+        };
+
+        useEffect(() => {
+          if (user && fbReady) loadReservations();
+        }, [user, fbReady]);
+
+        const handleLogin = async () => {
+          const { auth, googleProvider, signInWithPopup } = window.FB;
+          try {
+            await signInWithPopup(auth, googleProvider);
+          } catch (err) {
+            alert("فشل تسجيل الدخول: " + err.message);
+          }
+        };
+
+        const handleLogout = () => {
+          const { auth, signOut } = window.FB;
+          signOut(auth);
+        };
+
+        const handleReserve = async (juzNumber, city) => {
+          if (!user) return alert("يجب تسجيل الدخول أولاً");
+          if (reservations[juzNumber]) {
+            alert("هذا الورد محجوز بالفعل، اختر ورداً آخر.");
+            return;
+          }
+          const { db, doc, setDoc, serverTimestamp } = window.FB;
+          const docId = `${todayKey}_${juzNumber}`;
+          try {
+            await setDoc(doc(db, "reservations", docId), {
+              juzNumber,
+              date: todayKey,
+              userId: user.uid,
+              userName: user.displayName || "مستخدم",
+              userEmail: user.email,
+              city: city || "غير محدد",
+              createdAt: serverTimestamp(),
+            });
+            await loadReservations();
+            alert(`✅ تم حجز الجزء ${juzNumber} بنجاح`);
+          } catch (err) {
+            alert("خطأ في الحجز: " + err.message);
+          }
+        };
+
+        const handleCancel = async (juzNumber) => {
+          const res = reservations[juzNumber];
+          if (!res) return;
+          if (res.userId !== user.uid) {
+            alert("لا يمكنك إلغاء حجز شخص آخر");
+            return;
+          }
+          const { db, doc, deleteDoc } = window.FB;
+          await deleteDoc(doc(db, "reservations", `${todayKey}_${juzNumber}`));
+          await loadReservations();
+        };
+
+        if (!fbReady || loading) {
+          return (
+            <div className="min-h-screen flex items-center justify-center text-deen-gold text-2xl">
+              جارٍ التحميل...
+            </div>
+          );
+        }
+
+        if (!user) {
+          return <Login onLogin={handleLogin} />;
+        }
+
+        return (
+          <div className="stars-bg min-h-screen relative">
+            <div className="relative z-10 container mx-auto px-4 py-6 max-w-6xl">
+              <Header user={user} onLogout={handleLogout} />
+              <div className="grid md:grid-cols-2 gap-4 my-6">
+                <LiveClock />
+                <LocationCard onLocationChange={setUserCity} />
+              </div>
+              <JuzGrid
+                reservations={reservations}
+                currentUserId={user.uid}
+                userCity={userCity}
+                onReserve={handleReserve}
+                onCancel={handleCancel}
+              />
+              <DuasSection />
+            </div>
+          </div>
+        );
+      }
+
+      ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    </script>
+  </body>
+</html>
